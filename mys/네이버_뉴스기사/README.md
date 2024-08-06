@@ -1,0 +1,10 @@
+- **naver_news_origin.csv** - 날짜별 상한가 종목 기사 크롤링 (로봇기사 제외, 기사 많은 경우 최대 24개까지 크롤링)
+- **naver_news_origin_duplicates.csv** - origin 기사에서 중복기사 제거
+- **naver_news_origin_duplicates_summ2.csv** - {context} 글에서 {code}에 대해서만 짧고 쉽게 요약하고 긍정 부정인지 분류해서 왜 인지'
+- **naver_news_origin_duplicates_summ3.csv** - {stock} 또는 {code}에 대해서만 짧고 쉽게 요약'
+- **naver_news_origin_duplicates_summ3-1.csv** - {context} 글에서 {code}에 대해서만 짧고 쉽게 요약' + 한글만
+- **naver_news_origin_duplicates_summ3-2.csv** - 요약기사 글자수 100글자 미만인 행 삭제
+- **naver_news_origin_duplicates_summ3-3.csv** - 한글만 남기기 (왜 했지.. ㅋ 이미 한글뿐인뎅..)
+- **naver_news_origin_duplicates_summ3-4.csv** - okt 명사 추출
+- **naver_news_origin_duplicates_summ3-5.csv** - okt 명사 추출(리스트) -> 문자열
+- **word_frequency.csv** - 단어 빈도수 확인하려고 만듦
