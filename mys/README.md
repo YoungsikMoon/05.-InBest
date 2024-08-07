@@ -16,3 +16,4 @@
 - **11_KrFinBertSC뉴스분석(X).ipynb** - KrFinBertSC 모델 레이어 변경하고 데이터셋으로 학습 -> 평가 스코어가 오르질 않음. (다양한 옵티마이저 시도했으나 안됨.)
 - **12_뉴스분석_어텐션스코어(X).ipynb** - 어떤 토큰에 가중치가 많이 반영되는지 확인 -> 시각화해봤으나 해석이 안됨.
 - **13_클래시피케이션.ipynb** - 다양한 NLP 기법을 활용해서 마지막 분석 (okt, TF-IDF, kobert-tokenizer, finbert-tokenizer, 로지스틱리그레션, XG부스팅, ollama-imbedding 등..)
+- **.streamlit** - 챗봇 구현
