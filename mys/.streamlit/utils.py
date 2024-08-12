@@ -29,7 +29,7 @@ def start_streamlit(page_title="MoonYoungSik"):
     st.title("💬"+ page_title+" Test")
     # 사이드바 생성
     with st.sidebar:
-        st.session_state.session_id = st.text_input("Seesion ID", value="moon_mys")
+        st.session_state.session_id = st.text_input("사용자명", value="문영식")
         clear_btn = st.button("대화기록 초기화")
         if clear_btn:
             # 해당 session_id에 대한 대화 기록만 초기화
@@ -88,7 +88,7 @@ def input_output():
 
             # 프롬프트 템플릿 생성
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "이 시스템은 한국인을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
+                ("system", "이 시스템은 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
                 MessagesPlaceholder(variable_name="history"),
                 ("user", "{question}"),
             ])
@@ -106,7 +106,7 @@ def input_output():
 
             # AI 응답 생성
             response = chain_with_memory.invoke(
-                {"ability": "주식", "question": user_input},
+                {"ability": "주식", "username": st.session_state.session_id ,"question": user_input},
                 config={"configurable": {"session_id": st.session_state.session_id}}
             )
             # 응답을 메시지에 추가
