@@ -21,22 +21,97 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 # 스트리밍 기능 관련
 from langchain_core.callbacks.base import BaseCallbackHandler
 
+# 주가 데이터 리더
+import FinanceDataReader as fdr
+import pandas as pd
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+import datetime
 import os
+
+# 주식 종목 데이터셋
+df_krx = fdr.StockListing('KRX')
+df_krx = df_krx[['Code','Name']]
 
 def start_streamlit(page_title="MoonYoungSik"): 
     # 페이지 기본 셋팅
-    st.set_page_config(page_title=page_title,  page_icon="💬")
-    st.title("💬"+ page_title+" Test")
+    st.set_page_config(page_title=page_title,  page_icon="💰📉📈🤑")
+    st.title("💰📉📈🤑"+ page_title)
     # 사이드바 생성
     with st.sidebar:
-        st.session_state.session_id = st.text_input("사용자명", value="문영식")
+        # 사용자 특화 시키기 위한 이름 받기 (로그인 기능을 대체하기 위함)
+        st.session_state.session_id = st.text_input("사용자명", value="")
+        # KRX 상장 주식 데이터 가져오기
+        view_krx = st.button("주식 목록 보기")
+        if view_krx:
+            # Streamlit 애플리케이션 제목
+            st.title('주식 목록')
+            st.dataframe(df_krx, width=400, height=200)
+        # 주식 데이터 조회
+        st.session_state.code = st.text_input(
+            '종목코드', 
+            value='',
+            placeholder='종목코드를 입력해 주세요'
+        )
+        current_year = datetime.datetime.now().year
+        current_month = datetime.datetime.now().month
+        current_day = datetime.datetime.now().day
+        st.session_state.start_date = st.date_input(
+            "조회 시작일을 선택해 주세요",
+            datetime.datetime(current_year, current_month, current_day-1)
+        )
+        st.session_state.end_date = st.date_input(
+            "조회 종료일을 선택해 주세요",
+            datetime.datetime(current_year, current_month, current_day)
+        )
+        if st.session_state.start_date > st.session_state.end_date:
+            st.error("시작일은 종료일보다 이전이어야 합니다.")
+
+        # 세션 초기화
         clear_btn = st.button("대화기록 초기화")
         if clear_btn:
             # 해당 session_id에 대한 대화 기록만 초기화
             if st.session_state.session_id in st.session_state["store"]:
                 del st.session_state["store"][st.session_state.session_id]
             st.session_state["messages"] = []  # 전체 메시지 초기화
-            st.rerun  # 변경 사항 반영을 위해 rerun 호출
+            # 입력 필드 초기화
+            st.session_state.code = ''  # 종목코드 초기화
+            st.session_state.start_date = datetime.datetime(current_year, current_month, current_day-1)  # 시작일 초기화
+            st.session_state.end_date = datetime.datetime(current_year, current_month, current_day)  # 종료일 초기화
+            # 변경 사항 반영을 위해 rerun 호출
+            st.rerun  
+
+        def prepare_price_data(df):
+            """가격 데이터를 정리하여 DataFrame으로 반환하는 함수"""
+            return pd.DataFrame({
+                '시가': df['Open'],
+                '종가': df['Close'],
+                '고가': df['High'],
+                '저가': df['Low']
+            })
+
+        def display_chart(title, data):
+            """차트를 표시하는 함수"""
+            st.header(title)
+            st.line_chart(data)
+
+        if st.session_state.start_date and st.session_state.end_date and st.session_state.code:
+            try:
+                df = fdr.DataReader(st.session_state.code, st.session_state.start_date, st.session_state.end_date)
+                df_sorted = df.sort_index(ascending=True)
+
+                price_data = prepare_price_data(df_sorted)
+                volume = df_sorted['Volume']
+                change = df_sorted['Change']
+
+                st.title(f"종목코드 : {st.session_state.code}")
+                display_chart(f"시가 종가 고가 저가", price_data)
+                display_chart("거래량", volume)
+                display_chart("변동폭", change)
+
+            except Exception as e:
+                st.error(f"데이터를 가져오는 데 오류가 발생했습니다: {e}")
+
 
 def service_init(): 
     # 세션 초기화
