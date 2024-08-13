@@ -1,188 +1,274 @@
-# 스트림릿
 import streamlit as st
+import FinanceDataReader as fdr
+import pandas as pd
+import datetime
+import plotly.graph_objects as go
+import plotly.express as px
 
-# 모델 불러오는 방식 2가지
 from langchain_community.chat_models import ChatOllama
 from langchain_ollama.llms import OllamaLLM
-
-# 프롬프트 관련
-from langchain_core.prompts import PromptTemplate
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
-
-# 대화 기록 관련
 from langchain_core.messages import ChatMessage
-from langchain_core.prompts import MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
-
-# 스트리밍 기능 관련
 from langchain_core.callbacks.base import BaseCallbackHandler
 
-# 주가 데이터 리더
-import FinanceDataReader as fdr
-import pandas as pd
-import matplotlib.pyplot as plt
-import mplfinance as mpf
-import datetime
-import os
+# 주식 종목 데이터셋 로드
+df_krx = fdr.StockListing('KRX')[['Code', 'Name']]
 
-# 주식 종목 데이터셋
-df_krx = fdr.StockListing('KRX')
-df_krx = df_krx[['Code','Name']]
+def start_streamlit(page_title="MoonYoungSik"):
+    st.set_page_config(page_title=page_title, page_icon="💰📉📈🤑")
+    st.title(f"💰📉📈🤑 {page_title}")
+    st.session_state.session_id = ""
 
-def start_streamlit(page_title="MoonYoungSik"): 
-    # 페이지 기본 셋팅
-    st.set_page_config(page_title=page_title,  page_icon="💰📉📈🤑")
-    st.title("💰📉📈🤑"+ page_title)
-    # 사이드바 생성
+def side_bar():
     with st.sidebar:
-        # 사용자 특화 시키기 위한 이름 받기 (로그인 기능을 대체하기 위함)
         st.session_state.session_id = st.text_input("사용자명", value="")
-        # KRX 상장 주식 데이터 가져오기
-        view_krx = st.button("주식 목록 보기")
-        if view_krx:
-            # Streamlit 애플리케이션 제목
-            st.title('주식 목록')
-            st.dataframe(df_krx, width=400, height=200)
-        # 주식 데이터 조회
-        st.session_state.code = st.text_input(
-            '종목코드', 
-            value='',
-            placeholder='종목코드를 입력해 주세요'
-        )
-        current_year = datetime.datetime.now().year
-        current_month = datetime.datetime.now().month
-        current_day = datetime.datetime.now().day
-        st.session_state.start_date = st.date_input(
-            "조회 시작일을 선택해 주세요",
-            datetime.datetime(current_year, current_month, current_day-1)
-        )
-        st.session_state.end_date = st.date_input(
-            "조회 종료일을 선택해 주세요",
-            datetime.datetime(current_year, current_month, current_day)
-        )
-        if st.session_state.start_date > st.session_state.end_date:
-            st.error("시작일은 종료일보다 이전이어야 합니다.")
-
-        # 세션 초기화
-        clear_btn = st.button("대화기록 초기화")
-        if clear_btn:
-            # 해당 session_id에 대한 대화 기록만 초기화
+        if st.session_state.session_id:
+            # Check if the username already exists in the dataframe
+            if not st.session_state["user_df"]["사용자명"].str.contains(st.session_state.session_id).any():
+                creation_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_user = pd.DataFrame([[st.session_state.session_id, creation_date]], columns=["사용자명", "생성일자"])
+                st.session_state["user_df"] = pd.concat([st.session_state["user_df"], new_user], ignore_index=True)
+        
+        st.dataframe(st.session_state["user_df"], width=400, height=150)
+        
+        if st.button("대화기록 초기화"):
             if st.session_state.session_id in st.session_state["store"]:
                 del st.session_state["store"][st.session_state.session_id]
-            st.session_state["messages"] = []  # 전체 메시지 초기화
-            # 입력 필드 초기화
-            st.session_state.code = ''  # 종목코드 초기화
-            st.session_state.start_date = datetime.datetime(current_year, current_month, current_day-1)  # 시작일 초기화
-            st.session_state.end_date = datetime.datetime(current_year, current_month, current_day)  # 종료일 초기화
-            # 변경 사항 반영을 위해 rerun 호출
-            st.rerun  
+            st.rerun()
+        
+        about_stock()
+        
+def about_stock():
+    st.write('주식 목록')
+    st.dataframe(df_krx, width=400, height=200)
 
-        def prepare_price_data(df):
-            """가격 데이터를 정리하여 DataFrame으로 반환하는 함수"""
-            return pd.DataFrame({
-                '시가': df['Open'],
-                '종가': df['Close'],
-                '고가': df['High'],
-                '저가': df['Low']
-            })
+    st.session_state.code = st.text_input('종목코드', value='', placeholder='종목코드를 입력해 주세요')
+    st.session_state.start_date = st.date_input("조회 시작일을 선택해 주세요", datetime.datetime.now() - datetime.timedelta(days=30))
+    st.session_state.end_date = st.date_input("조회 종료일을 선택해 주세요", datetime.datetime.now())
 
-        def display_chart(title, data):
-            """차트를 표시하는 함수"""
-            st.header(title)
-            st.line_chart(data)
+    if st.session_state.start_date > st.session_state.end_date:
+        st.error("조회 날짜가 올바르지 않습니다.")
 
-        if st.session_state.start_date and st.session_state.end_date and st.session_state.code:
-            try:
-                df = fdr.DataReader(st.session_state.code, st.session_state.start_date, st.session_state.end_date)
-                df_sorted = df.sort_index(ascending=True)
+    if st.session_state.start_date and st.session_state.end_date and st.session_state.code:
+        try:
+            # 데이터 가져오기
+            df = fdr.DataReader(st.session_state.code, st.session_state.start_date, st.session_state.end_date).sort_index(ascending=True)
+            st.title(f"종목코드: {st.session_state.code}")
 
-                price_data = prepare_price_data(df_sorted)
-                volume = df_sorted['Volume']
-                change = df_sorted['Change']
+            # 이동 평균선 (SMA) 계산
+            # 사용자 입력을 받기 위한 필드 추가 (이동 평균선 기간)
+            sma_period = st.number_input("이동 평균선 기간 (일수)", min_value=1, value=1)
+            df['SMA'] = df['Close'].rolling(window=sma_period).mean()  # 이동 평균
+            # 이동 평균선 차트 생성
+            def plot_sma_chart(df):
+                sma_fig = go.Figure()
+                sma_fig.add_trace(go.Scatter(
+                    x=df.index,
+                    y=df['SMA'],
+                    mode='lines',
+                    name=f'{sma_period}일 이동 평균',
+                    line=dict(color='orange'),
+                    hoverinfo='text',
+                    text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>가격: {sma:.2f}' for index, sma in zip(df.index, df['SMA'])]
+                ))
+                sma_fig.update_layout(
+                    title="이동 평균선 차트",
+                    title_x=0,
+                    xaxis_title='날짜',
+                    yaxis_title='가격',
+                    xaxis=dict(showticklabels=False),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                )
+                return sma_fig
+            st.plotly_chart(plot_sma_chart(df))
 
-                st.title(f"종목코드 : {st.session_state.code}")
-                display_chart(f"시가 종가 고가 저가", price_data)
-                display_chart("거래량", volume)
-                display_chart("변동폭", change)
+            # 볼린저 밴드 차트 생성
+            df['UpperBand'] = df['SMA'] + (df['Close'].rolling(window=sma_period).std() * 2)
+            df['LowerBand'] = df['SMA'] - (df['Close'].rolling(window=sma_period).std() * 2)
+            def plot_bollinger_chart(df):
+                bollinger_fig = go.Figure(data=[
+                    go.Candlestick(
+                        x=df.index,
+                        open=df['Open'],
+                        high=df['High'],
+                        low=df['Low'],
+                        close=df['Close'],
+                        name='캔들봉',
+                        hoverinfo='text',
+                        text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>시가: {open_}<br>종가: {close_}' for index, open_, close_ in zip(df.index, df['Open'], df['Close'])]
+                    ),
+                    go.Scatter(
+                        x=df.index,
+                        y=df['UpperBand'],
+                        mode='lines',
+                        name='상단 볼린저 밴드',
+                        line=dict(color='red', dash='dash'),
+                        hoverinfo='text',
+                        text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>상단 밴드: {upper:.2f}' for index, upper in zip(df.index, df['UpperBand'])]
+                    ),
+                    go.Scatter(
+                        x=df.index,
+                        y=df['LowerBand'],
+                        mode='lines',
+                        name='하단 볼린저 밴드',
+                        line=dict(color='green', dash='dash'),
+                        hoverinfo='text',
+                        text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>하단 밴드: {lower:.2f}' for index, lower in zip(df.index, df['LowerBand'])]
+                    )
+                ])
+                bollinger_fig.update_layout(
+                    xaxis_rangeslider_visible=False,
+                    title="볼린저 밴드 차트",
+                    title_x=0,
+                    xaxis_title='날짜',
+                    yaxis_title='가격',
+                    xaxis=dict(showticklabels=False),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                )
+                return bollinger_fig
+            st.plotly_chart(plot_bollinger_chart(df))
 
-            except Exception as e:
-                st.error(f"데이터를 가져오는 데 오류가 발생했습니다: {e}")
+            # 거래량 차트
+            def plot_volume_chart(df):
+                volume_fig = go.Figure()
+                volume_colors = ['green' if df['Volume'].iloc[i] >= df['Volume'].iloc[i-1] else 'red' for i in range(1, len(df['Volume']))]
+                volume_colors = ['blue'] + volume_colors  # 첫 번째 값은 기본 색상으로 설정
+                volume_fig.add_trace(go.Bar(
+                    x=df.index,
+                    y=df['Volume'],
+                    name='거래량',
+                    marker_color=volume_colors,
+                    hoverinfo='text',
+                    text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>거래량: {volume}' for index, volume in zip(df.index, df['Volume'])]
+                ))
+                volume_fig.update_layout(
+                    title_text='거래량 차트',
+                    title_x=0,
+                    xaxis_title='날짜',
+                    yaxis_title='거래량',
+                    xaxis=dict(showticklabels=False),
+                    xaxis_rangeslider_visible=False,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    yaxis=dict(
+                        showgrid=True,
+                        zeroline=True,
+                        zerolinecolor='gray',
+                        zerolinewidth=1,
+                        title_standoff=10
+                    ),
+                    margin=dict(l=40, r=40, t=40, b=40)
+                )
+                return volume_fig
+            st.plotly_chart(plot_volume_chart(df))
+
+            # 일일 수익률 계산
+            df['Daily Return'] = df['Close'].pct_change()
+            def plot_daily_return_chart(df):
+                daily_return_fig = go.Figure()
+                daily_return_fig.add_trace(go.Bar(
+                    x=df.index,
+                    y=df['Daily Return'],
+                    marker_color=['green' if x >= 0 else 'red' for x in df['Daily Return']],
+                    hoverinfo='text',
+                    text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>수익률: {x:.2%}' for index, x in zip(df.index, df['Daily Return'])],
+                    name='일일 수익률'
+                ))
+                daily_return_fig.update_layout(
+                    title_text='일일 수익률',
+                    title_x=0, 
+                    xaxis_title='날짜',
+                    yaxis_title='수익률',
+                    xaxis=dict(showticklabels=False),
+                    hovermode='x unified',
+                    margin=dict(l=40, r=40, t=40, b=40),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                )
+                return daily_return_fig
+
+            st.plotly_chart(plot_daily_return_chart(df))
+
+        except Exception as e:
+            st.error(f"데이터를 가져오는 데 오류가 발생했습니다: {e}")
 
 
-def service_init(): 
-    # 세션 초기화
-    if "messages" not in st.session_state: # 대화 기록 출력용
-        st.session_state["messages"] = []
+def session_init():
+    if "store" not in st.session_state:
+        st.session_state["store"] = {}
+    
+    if "user_df" not in st.session_state:
+        st.session_state["user_df"] = pd.DataFrame(columns=["사용자명", "생성일자"])
+    
+    session_id = st.session_state.session_id
+    if session_id and session_id not in st.session_state["store"]:
+        st.session_state["store"][session_id] = {
+            "messages": [],
+            "history": ChatMessageHistory()
+        }
 
-    if "store" not in st.session_state:  # 대화 기록 참고용
-        st.session_state["store"] = dict()
-
-def print_messages(): 
-    # 챗봇은 질문을 한 번 하고 답변을 할때마다 새로고침이 일어나는 특성이 있다.
-    # 이전 대화기록을 출력하기 위해 messages 리스트가 필요하다.
-    # 세션이 있고 세션에 메세지가 있다면 이전 대화 기록을 출력
-    if "messages" in st.session_state and len(st.session_state["messages"]) > 0:
-        for chat_message in st.session_state["messages"]:
+def print_messages():
+    session_id = st.session_state.session_id
+    if session_id in st.session_state["store"]:
+        messages = st.session_state["store"][session_id]["messages"]
+        for chat_message in messages:
             st.chat_message(chat_message.role).write(chat_message.content)
 
-def get_session_history(session_ids: str) -> BaseChatMessageHistory:
-    # 세션 ID를 기반으로 세션 기록을 가져오는 함수
-    if session_ids not in st.session_state["store"]:
-        st.session_state["store"][session_ids] = ChatMessageHistory()
-    return st.session_state["store"][session_ids] # 해당 세션 ID에 대한 세션 기록 변환
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    if session_id not in st.session_state["store"]:
+        st.session_state["store"][session_id] = {
+            "messages": [],
+            "history": ChatMessageHistory()
+        }
+    return st.session_state["store"][session_id]["history"]
 
-class StreamHandler(BaseCallbackHandler): 
-    # AI 답변 생성 방식 바꾸기 : 전체 토큰 생성되고 나오는 방식 -> 토큰 생성될 때마다 출력 방식
+class StreamHandler(BaseCallbackHandler):
     def __init__(self, container, initial_text=""):
         self.container = container
         self.text = initial_text
-    def on_llm_new_token(self, token:str, **kwargs) -> None:
+
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
         self.text += token
         self.container.markdown(self.text)
 
-# # llm = ChatOllama(model= 'MoonYoungSik') # 여러가지 속성 값이 나옴.
-# # llm = OllamaLLM(model= 'MoonYoungSik') # 출력값이 답변만 나옴.
-# # llm = ChatOllama(model= 'gemma2') # ollama 자체 gemma2-9b 입니다. 질의 응답 수준이 따로 설정한것 없이 SYSTEM 설정이 잘되어있는 듯 함.
-output_parser = StrOutputParser()
-def input_output():
-    # 유저의 입력과 출력까지 전반적인 코드
+def llm_init(user_input):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "이 시스템은 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
+        MessagesPlaceholder(variable_name="history"),
+        ("user", "{question}"),
+    ])
+    
+    stream_handler = StreamHandler(st.empty())
+    output_parser = StrOutputParser()
+    llm = ChatOllama(model='gemma2', streaming=True, callbacks=[stream_handler])
+
+    session_id = st.session_state.session_id
+    chain_with_memory = RunnableWithMessageHistory(
+        prompt | llm | output_parser,
+        get_session_history,
+        history_messages_key="history",
+        input_messages_key="question"
+    )
+    
+    response = chain_with_memory.invoke(
+        {"ability": "주식", "username": session_id, "question": user_input},
+        config={"configurable": {"session_id": session_id}}
+    )
+    
+    st.session_state["store"][session_id]["messages"].append(ChatMessage(role="assistant", content=response))
+
+def chatbot():
+    session_init()
+    session_id = st.session_state.session_id
     if user_input := st.chat_input("메세지를 입력해 주세요."):
-        st.chat_message("user").write(f"{user_input}") # 유저의 메세지를 출력
-        st.session_state["messages"].append(ChatMessage(role="user", content=user_input)) # 유저의 메세지를 messages 리스트에 담는다. print_messages() 함수를 보면 이유를 알 수 있다.
-
-        # AI의 답변
-        with st.chat_message("assistant"): 
-            # 스트림 핸들러와 함께 AI 모델 설정
-            stream_handler = StreamHandler(st.empty())
-            # llm = ChatOllama(model= 'gemma2', streaming=True, callbacks=[stream_handler])
-            llm = ChatOllama(model='gemma2', streaming=True, callbacks=[stream_handler], max_input_tokens=None, max_output_tokens=None)
-
-            # 프롬프트 템플릿 생성
-            prompt = ChatPromptTemplate.from_messages([
-                ("system", "이 시스템은 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
-                MessagesPlaceholder(variable_name="history"),
-                ("user", "{question}"),
-            ])
-
-            # 프롬프트와 AI 모델을 연결
-            chain = prompt | llm | output_parser
-
-            # 메세지 기록을 활용한 체인 객체 생성
-            chain_with_memory = RunnableWithMessageHistory( 
-                chain, # 체인
-                get_session_history, # 세션 기록을 가져오는 함수
-                history_messages_key="history", # 기록 메세지의 key
-                input_messages_key="question", # 사용자 질문의 key
-            )
-
-            # AI 응답 생성
-            response = chain_with_memory.invoke(
-                {"ability": "주식", "username": st.session_state.session_id ,"question": user_input},
-                config={"configurable": {"session_id": st.session_state.session_id}}
-            )
-            # 응답을 메시지에 추가
-            st.session_state["messages"].append(ChatMessage(role="assistant", content=response))
+        st.chat_message("user").write(f"{user_input}")
+        if session_id not in st.session_state["store"]:
+            st.session_state["store"][session_id] = {
+                "messages": [],
+                "history": ChatMessageHistory()
+            }
+        st.session_state["store"][session_id]["messages"].append(ChatMessage(role="user", content=user_input))
+        with st.chat_message("assistant"):
+            llm_init(user_input)
