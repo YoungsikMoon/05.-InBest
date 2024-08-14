@@ -1,23 +1,29 @@
 import streamlit as st
-import FinanceDataReader as fdr
-import pandas as pd
-import datetime
-import plotly.graph_objects as go
-import plotly.express as px
 
+# 사이드바 관련
+import datetime
+import pandas as pd
+import sidebar_sctock
+import importlib
+# importlib.reload(sidebar_sctock)
+
+# LLM 생성과 저장 관련
 from langchain_community.chat_models import ChatOllama
 from langchain_ollama.llms import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import ChatMessage
+from langchain_core.callbacks.base import BaseCallbackHandler
+
+# 챗 기억 저장 관련
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.callbacks.base import BaseCallbackHandler
+
 
 import sidebar_sctock
 import importlib
-importlib.reload(sidebar_sctock)
+# importlib.reload(sidebar_sctock)
 
 def start_streamlit(page_title="MoonYoungSik"):
     st.set_page_config(page_title=page_title, page_icon="💰📉📈🤑")
@@ -27,7 +33,13 @@ def start_streamlit(page_title="MoonYoungSik"):
 
 def side_bar():
     with st.sidebar:
+        if st.button("현재 사용자 대화기록 지우기"):
+            if st.session_state.session_id in st.session_state["store"]:
+                del st.session_state["store"][st.session_state.session_id]
+            st.rerun()
+
         st.session_state.session_id = st.text_input("사용자명", value="")
+        
         if st.session_state.session_id:
             # Check if the username already exists in the dataframe
             if not st.session_state["user_df"]["사용자명"].str.contains(st.session_state.session_id).any():
@@ -37,10 +49,6 @@ def side_bar():
         
         st.dataframe(st.session_state["user_df"], width=400, height=150)
         
-        if st.button("대화기록 초기화"):
-            if st.session_state.session_id in st.session_state["store"]:
-                del st.session_state["store"][st.session_state.session_id]
-            st.rerun()
 
         sidebar_sctock.about_stock()
         
@@ -85,7 +93,7 @@ class StreamHandler(BaseCallbackHandler):
 
 def llm_init(user_input):
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "이 시스템은 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
+        ("system", "이 시스템이름은 InBest입니다. 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
         MessagesPlaceholder(variable_name="history"),
         ("user", "{question}"),
     ])
