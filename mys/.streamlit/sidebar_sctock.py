@@ -1,16 +1,18 @@
 import streamlit as st
 import FinanceDataReader as fdr
 import datetime
+import pandas as pd
 import plotly.graph_objects as go
 
 # 주식 종목 데이터셋 로드
 df_krx = fdr.StockListing('KRX')[['Code', 'Name']]
 
 def about_stock():
+
     st.write('주식 목록')
     st.dataframe(df_krx, width=400, height=200)
 
-    st.session_state.code = st.text_input('종목코드', value='', placeholder='종목코드를 입력해 주세요')
+    st.session_state.code = st.text_input('KRX 전체 종목 코드', value='', placeholder='종목코드를 입력해 주세요')
     st.session_state.start_date = st.date_input("조회 시작일을 선택해 주세요", datetime.datetime.now() - datetime.timedelta(days=365))
     st.session_state.end_date = st.date_input("조회 종료일을 선택해 주세요", datetime.datetime.now())
 
@@ -18,6 +20,7 @@ def about_stock():
         st.error("조회 날짜가 올바르지 않습니다.")
         return
 
+    
     if st.session_state.code:
         try:
             df = fdr.DataReader(st.session_state.code, st.session_state.start_date, st.session_state.end_date).sort_index(ascending=True)
@@ -25,26 +28,62 @@ def about_stock():
                 st.error("해당 기간에 데이터가 없습니다.")
                 return
 
-            st.title(f"종목코드: {st.session_state.code}")
+            stock_advice()
+
+            # st.title(f"종목코드: {st.session_state.code}")
             plot_stock_charts(df)
 
         except Exception as e:
             st.error(f"데이터를 가져오는 데 오류가 발생했습니다: {e}")
 
+def stock_advice():
+    # 조언 생성
+    session_id = st.session_state.session_id
+    if st.button("종목 최신 뉴스 분석"):
+        stock_name = df_krx.loc[df_krx['Code'] == st.session_state.code, 'Name'].values[0]
+        advice_df = st.session_state["store"][session_id]["advice_df"]
+        existing_advice = advice_df.loc[advice_df['stock_name'] == stock_name, 'stock_advice']
+        if existing_advice.empty:
+            from langchain_core.prompts import ChatPromptTemplate
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "이 시스템 이름은 InbestBot 입니다. {ability} 분석 전문 시스템 입니다. 한국인 '{username}'님에게 주식명을 입력받아 간단한 정보를 제공합니다. 단발성 대화입니다."),
+                ("user", "{question}"),
+            ])
+            from utils import StreamHandler
+            stream_handler = StreamHandler(st.empty())
+            from langchain_core.output_parsers import StrOutputParser
+            output_parser = StrOutputParser()
+            from langchain_community.chat_models import ChatOllama
+            llm = ChatOllama(model='gemma2', streaming=True, callbacks=[stream_handler])
+
+            chain = prompt | llm | output_parser
+            
+            response = chain.invoke(
+                {"ability": "주식", "username": session_id, "question": f"{stock_name}"},   
+            )
+            
+            # 새로운 조언 추가
+            advice_data = pd.DataFrame({'stock_name': [stock_name], 'stock_advice': [response]})
+            st.session_state["store"][session_id]["advice_df"] = pd.concat([advice_df, advice_data], ignore_index=True)
+        else:
+            # 기존 조언 출력
+            st.write(f"{existing_advice.values[0]}")
+
 def plot_stock_charts(df):
-    sma_period = st.number_input("이동 평균선 기간 (일수)", min_value=1, value=20)
+    if st.button("종목 분석 차트 생성"):
+        sma_period = st.number_input("이동 평균선 기간 (일수)", min_value=1, value=20)
 
-    # 이동 평균 및 볼린저 밴드 계산
-    df['SMA'] = df['Close'].rolling(window=sma_period).mean()
-    df['UpperBand'] = df['SMA'] + (df['Close'].rolling(window=sma_period).std() * 2)
-    df['LowerBand'] = df['SMA'] - (df['Close'].rolling(window=sma_period).std() * 2)
-    df['Daily Return'] = df['Close'].pct_change()
+        # 이동 평균 및 볼린저 밴드 계산
+        df['SMA'] = df['Close'].rolling(window=sma_period).mean()
+        df['UpperBand'] = df['SMA'] + (df['Close'].rolling(window=sma_period).std() * 2)
+        df['LowerBand'] = df['SMA'] - (df['Close'].rolling(window=sma_period).std() * 2)
+        df['Daily Return'] = df['Close'].pct_change()
 
-    # 차트 생성 및 표시
-    st.plotly_chart(plot_sma_chart(df, sma_period))
-    st.plotly_chart(plot_bollinger_chart(df))
-    st.plotly_chart(plot_volume_chart(df))
-    st.plotly_chart(plot_daily_return_chart(df))
+        # 차트 생성 및 표시
+        st.plotly_chart(plot_sma_chart(df, sma_period))
+        st.plotly_chart(plot_bollinger_chart(df))
+        st.plotly_chart(plot_volume_chart(df))
+        st.plotly_chart(plot_daily_return_chart(df))
 
 def plot_sma_chart(df, sma_period):
     sma_fig = go.Figure()
