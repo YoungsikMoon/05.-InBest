@@ -20,6 +20,9 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
+# RAG 관련
+import ollama
+import chromadb
 
 import sidebar_sctock
 import importlib
@@ -36,7 +39,12 @@ def start_streamlit(page_title="MoonYoungSik"):
         'About': "문영식 : 010-9008-4362"
         }
     )
-    st.markdown("""<style> div[data-testid="stToolbar"] { display: none;} </style>""", unsafe_allow_html=True)
+    st.markdown("""<style> 
+                div[data-testid="stToolbar"] {
+                    display: none;
+                }
+                </style>
+                """, unsafe_allow_html=True)
     st.title(f"💰📉📈🤑 {page_title}")
     st.session_state.session_id = ""
 
@@ -79,7 +87,7 @@ def session_init():
         st.session_state["store"][session_id] = {
             "messages": [],
             "history": ChatMessageHistory(),
-            "advice_df": pd.DataFrame(columns=['stock_name', 'stock_advice'])
+            "advice_df": pd.DataFrame(columns=['day', 'stock_name', 'stock_advice'])
         }
 
 def print_messages():
@@ -102,30 +110,32 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 def llm_init(user_input):
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "이 시스템이름은 InBest입니다. 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
-        MessagesPlaceholder(variable_name="history"),
-        ("user", "{question}"),
-    ])
-    
-    stream_handler = StreamHandler(st.empty())
-    output_parser = StrOutputParser()
-    llm = ChatOllama(model='gemma2', streaming=True, callbacks=[stream_handler])
+    with st.chat_message("assistant"):
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "이 시스템이름은 InBest입니다. 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
+            MessagesPlaceholder(variable_name="history"),
+            ("user", "{question}"),
+        ])
+        
+        stream_handler = StreamHandler(st.empty())
+        output_parser = StrOutputParser()
+        llm = ChatOllama(model='gemma2', streaming=True, callbacks=[stream_handler])
 
-    session_id = st.session_state.session_id
-    chain_with_memory = RunnableWithMessageHistory(
-        prompt | llm | output_parser,
-        get_session_history,
-        history_messages_key="history",
-        input_messages_key="question"
-    )
-    
-    response = chain_with_memory.invoke(
-        {"ability": "주식", "username": session_id, "question": user_input},
-        config={"configurable": {"session_id": session_id}}
-    )
-    
-    st.session_state["store"][session_id]["messages"].append(ChatMessage(role="assistant", content=response))
+        session_id = st.session_state.session_id
+        chain_with_memory = RunnableWithMessageHistory(
+            prompt | llm | output_parser,
+            get_session_history,
+            history_messages_key="history",
+            input_messages_key="question"
+        )
+        
+        response = chain_with_memory.invoke(
+            {"ability": "주식", "username": session_id, "question": user_input},
+            config={"configurable": {"session_id": session_id}}
+        )
+        
+        st.session_state["store"][session_id]["messages"].append(ChatMessage(role="assistant", content=response))
+
 
 def chatbot():
     session_id = st.session_state.session_id
@@ -133,5 +143,4 @@ def chatbot():
     if user_input := st.chat_input("메세지를 입력해 주세요."):
         st.chat_message("user").write(f"{user_input}")
         st.session_state["store"][session_id]["messages"].append(ChatMessage(role="user", content=user_input))
-        with st.chat_message("assistant"):
-            llm_init(user_input)
+        llm_init(user_input)
