@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 import stock_advice
 import stock_chart
 import locale  # locale 모듈 가져오기
-
 # import importlib
 # importlib.reload()
 

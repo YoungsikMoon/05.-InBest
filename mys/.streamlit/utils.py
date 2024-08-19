@@ -22,11 +22,13 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # RAG 관련
 import ollama
-import chromadb
-
 import sidebar_sctock
 import importlib
 # importlib.reload(sidebar_sctock)
+
+# import sys
+# print("현재 Python 인터프리터 경로:", sys.executable)
+
 
 def start_streamlit(page_title="MoonYoungSik"):
     st.set_page_config(

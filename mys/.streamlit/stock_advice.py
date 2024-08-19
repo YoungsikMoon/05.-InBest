@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 import plotly.graph_objects as go
 
+
 # CSV 파일 읽기
 import pandas as pd
 def get_news_data(code):

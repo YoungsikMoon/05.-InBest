@@ -2,7 +2,15 @@ import streamlit as st
 import FinanceDataReader as fdr
 import datetime
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import load_model, Sequential
+from tensorflow.keras.layers import Dense, LSTM, Conv1D
+from datetime import timedelta
+import os
+
 
 import warnings
 # 경고 무시 설정
@@ -17,7 +25,8 @@ def plot_stock_charts(df):
     df['Daily Return'] = df['Close'].pct_change()
 
     # 차트 생성 및 표시
-    plot_predict_chart(df)
+    if st.button('10일 예측'):
+        plot_predict_chart(df)
     st.plotly_chart(plot_sma_chart(df, sma_period))
     st.plotly_chart(plot_bollinger_chart(df))
     st.plotly_chart(plot_volume_chart(df))
@@ -149,30 +158,19 @@ def plot_daily_return_chart(df):
     )
     return daily_return_fig
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import load_model
-import FinanceDataReader as fdr
-from datetime import timedelta
-import os
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Conv1D
-import plotly.graph_objects as go
 
-# 모델 로드 (한 번만 수행)
-WINDOW_SIZE = 20
-filename = os.path.join('/home/alpaco/chs/data/model/02_LSTM', 'ckeckpointer.weights.h5')
-model = Sequential([
-    Conv1D(filters=32, kernel_size=5, padding="causal", activation="relu", input_shape=[WINDOW_SIZE, 1]),
-    LSTM(16, activation='tanh'),
-    Dense(16, activation="relu"),
-    Dense(1),
-])
-model.load_weights(filename)
 
 def plot_predict_chart(df):
+    WINDOW_SIZE = 20
+    filename = os.path.join('/home/alpaco/chs/data/model/02_LSTM', 'ckeckpointer.weights.h5')
+    model = Sequential([
+        Conv1D(filters=32, kernel_size=5, padding="causal", activation="relu", input_shape=[WINDOW_SIZE, 1]),
+        LSTM(16, activation='tanh'),
+        Dense(16, activation="relu"),
+        Dense(1),
+    ])
+    model.load_weights(filename)
+
     # 종가 데이터만 사용
     data = df['Close'].values.reshape(-1, 1)
 
@@ -206,14 +204,13 @@ def plot_predict_chart(df):
 
     # 예측 결과 시각화
     # df_new = df[-30:]
-    df_new = df[:]
     predict_fig = go.Figure()
 
     # 실제 가격 데이터
     predict_fig.add_trace(go.Scatter(
-        x=df_new.index, y=df_new['Close'], mode='lines',
+        x=df.index, y=df['Close'], mode='lines',
         name='실제 주가', line=dict(color='yellow'),
-        hoverinfo='text', text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>가격: {close:.2f}원' for index, close in zip(df_new.index, df_new['Close'])]
+        hoverinfo='text', text=[f'날짜: {index.strftime("%Y-%m-%d")}<br>가격: {close:.2f}원' for index, close in zip(df.index, df['Close'])]
     ))
 
     # 예측 가격 데이터
