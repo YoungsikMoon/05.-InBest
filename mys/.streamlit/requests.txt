@@ -1,0 +1,13 @@
+conda create -n inbest python==3.10.13
+pip install streamlit finance-datareader plotly matplotlib scikit-learn tensorflow
+pip install langchain-community langchain-ollama chromadb
+pip install --upgrade h5py
+pip install finance-datareader
+pip install beautifulsoup4
+pip install lxml
+pip install plotly
+pip install scikit-learn
+pip install tensorflow==2.13
+pip install matplotlib
+pip install typing-extensions>=4.6.0
+streamlit run main.py
