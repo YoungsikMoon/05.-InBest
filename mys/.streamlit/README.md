@@ -6,7 +6,7 @@
 ### utils.py
 - 메인에서 호출하는 기본이 되는 모듈 정의
 
-#### sidebar_stock_search.py
+### sidebar_stock_search.py
 - 사이드바에서 주식 데이터셋 제공을 위한 모듈
 
 ### sidebar_stock_advice.py
