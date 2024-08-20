@@ -1,7 +1,19 @@
-streamlit으로 챗봇 만들어서 뉴스 데이터를 잘 읽어서 잘 조언해주는 모델 만들어보자 ~~
+# 누구나 쉽게 주식 분석 가능한 서비스
 
-main.py : 스트림릿으로 모듈들 불러와 실행.
-utils.py : 서비스 기본 기능.
-sidebar_stock.py : 사이드바 주식 검색 기능.
-sidebar_advice.py : 사이드바 주식 조언 기능.
-sidebar_chart.py : 사이드바 주식 차트 기능.
+### main.py
+- 서비스 시작을 위한 모듈
+
+### utils.py
+- 메인에서 호출하는 기본이 되는 모듈 정의
+
+#### sidebar_stock_search.py
+- 사이드바에서 주식 데이터셋 제공을 위한 모듈
+
+### sidebar_stock_advice.py
+- 사이드바에서 검색 된 종목에 대한 뉴스 정보 제공 모듈
+
+### sidebar_stock_chart.py
+- 사이드바에서 검색 된 종목에 대한 차트 시각화 모듈
+
+#### temp.ipynb
+- 이것 저것 단발성 테스트 용 파일

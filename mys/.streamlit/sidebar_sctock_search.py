@@ -4,8 +4,8 @@ import datetime
 import pandas as pd
 import plotly.graph_objects as go
 
-import stock_advice
-import stock_chart
+import sidebar_stock_advice
+import sidebar_stock_chart
 import locale  # locale 모듈 가져오기
 # import importlib
 # importlib.reload()
@@ -42,12 +42,12 @@ def about_stock():
             st.warning("상한가 종목 코드를 입력해주세요.")
             return
 
-        news_df = stock_advice.get_news_data(st.session_state.code)[0]
+        news_df = sidebar_stock_advice.get_news_data(st.session_state.code)[0]
         select_day = st.selectbox("뉴스 날짜 선택", news_df["day"].tolist())
         # 특정 종목 상한가 데이터셋
         select_sanghanga_data(st.session_state.code)
         # 뉴스 정보 요약
-        stock_advice.stock_advice(st.session_state.code, select_day)
+        sidebar_stock_advice.stock_advice(st.session_state.code, select_day)
     
     st.session_state.start_date = st.date_input("조회 시작일을 선택해 주세요", datetime.datetime.now() - datetime.timedelta(days=365))
     st.session_state.end_date = st.date_input("조회 종료일을 선택해 주세요", datetime.datetime.now())
@@ -64,7 +64,7 @@ def about_stock():
                 return
 
             # 차트 호출
-            stock_chart.plot_stock_charts(df)
+            sidebar_stock_chart.plot_stock_charts(df)
 
         except Exception as e:
             st.error(f"데이터를 가져오는 데 오류가 발생했습니다: {e}")

@@ -3,9 +3,8 @@ import streamlit as st
 # 사이드바 관련
 import datetime
 import pandas as pd
-import sidebar_sctock
-import importlib
-# importlib.reload(sidebar_sctock)
+import sidebar_sctock_search
+
 
 # LLM 생성과 저장 관련
 from langchain_community.chat_models import ChatOllama
@@ -22,9 +21,6 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # RAG 관련
 import ollama
-import sidebar_sctock
-import importlib
-# importlib.reload(sidebar_sctock)
 
 # import sys
 # print("현재 Python 인터프리터 경로:", sys.executable)
@@ -74,7 +70,7 @@ def side_bar():
                 del st.session_state["store"][st.session_state.session_id]
             st.rerun()
 
-        sidebar_sctock.about_stock()
+        sidebar_sctock_search.about_stock()
         
 
 def session_init():
