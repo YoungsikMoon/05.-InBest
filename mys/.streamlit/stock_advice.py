@@ -44,9 +44,10 @@ def stock_advice(code, select_day):
     if st.button("뉴스 요약"):
         if existing_advice.empty:
             # Prompt 템플릿 정의
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             from langchain_core.prompts import ChatPromptTemplate
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "이 시스템 이름은 InbestBot 입니다. {ability} 분석 전문 시스템 입니다. 한국인 '{username}'님에게 주식명을 입력받아 간단한 정보를 제공합니다. 단발성 대화입니다."),
+                ("system", "이 시스템 이름은 InbestService 입니다. {ability} 분석을 잘하고 금융 전문가 입니다. 오늘 date는 {now} 입니다. 한국인 '{username}'님에게 정보를 제공합니다. 단발성 대화입니다."),
                 ("user", "{stock} 종목 통합 기사: {all_context}. / 질문 : {question}"),
             ])
 
@@ -70,7 +71,7 @@ def stock_advice(code, select_day):
             )
 
             response = chain_with_memory.invoke(
-                {"stock": stock_name, "ability": "주식", "username": session_id, "all_context": all_context, "question": question},
+                {"now": now, "stock": stock_name, "ability": "주식", "username": session_id, "all_context": all_context, "question": question},
                 config={"configurable": {"session_id": session_id}}
             )
 

@@ -112,9 +112,10 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 def llm_init(user_input):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with st.chat_message("assistant"):
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "이 시스템이름은 InBest입니다. 한국인 '{username}' 님을 대상으로 답변합니다. 그리고 {ability} 분석을 잘하고 투자 조언도 잘합니다."),
+            ("system", "이 시스템이름은 InBestService입니다. {ability} 분석을 잘하고 금융 전문가 입니다. 현재 date는 {now} 입니다. 한국인 '{username}' 님을 대상으로 답변합니다."),
             MessagesPlaceholder(variable_name="history"),
             ("user", "{question}"),
         ])
@@ -132,7 +133,7 @@ def llm_init(user_input):
         )
         
         response = chain_with_memory.invoke(
-            {"ability": "주식", "username": session_id, "question": user_input},
+            {"now": now, "ability": "주식", "username": session_id, "question": user_input},
             config={"configurable": {"session_id": session_id}}
         )
         
