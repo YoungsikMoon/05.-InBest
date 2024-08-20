@@ -35,18 +35,24 @@ def about_stock():
     st.write('상한가 종목')
     st.dataframe(sanghanga_df, use_container_width=True, height=200)
     st.session_state.code = st.text_input('종목코드', value='', placeholder='분석할 종목코드를 입력해 주세요')
+    
     if st.session_state.code:
-        # st.write(f'{st.session_state.code} 상한가 정보')
+        # 종목 코드가 상한가 데이터프레임에 존재하는지 확인
+        if st.session_state.code not in sanghanga_df['종목코드'].values:
+            st.warning("상한가 종목 코드를 입력해주세요.")
+            return
+
         news_df = stock_advice.get_news_data(st.session_state.code)[0]
         select_day = st.selectbox("뉴스 날짜 선택", news_df["day"].tolist())
         # 특정 종목 상한가 데이터셋
         select_sanghanga_data(st.session_state.code)
         # 뉴스 정보 요약
         stock_advice.stock_advice(st.session_state.code, select_day)
+    
     st.session_state.start_date = st.date_input("조회 시작일을 선택해 주세요", datetime.datetime.now() - datetime.timedelta(days=365))
     st.session_state.end_date = st.date_input("조회 종료일을 선택해 주세요", datetime.datetime.now())
 
-    if st.session_state.start_date > st.session_state.end_date :
+    if st.session_state.start_date > st.session_state.end_date:
         st.error("조회 날짜가 올바르지 않습니다.")
         return
     
@@ -62,6 +68,7 @@ def about_stock():
 
         except Exception as e:
             st.error(f"데이터를 가져오는 데 오류가 발생했습니다: {e}")
+
 
 
 def select_sanghanga_data(code):
