@@ -23,7 +23,6 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 import ollama
 
 # 음성인식 관련
-# import gTTS
 from gtts import gTTS
 from pydub import AudioSegment
 import base64
@@ -61,7 +60,6 @@ def side_bar():
     with st.sidebar:
         # 사용자 생성 입력
         st.session_state.session_id = st.text_input("사용자 추가", value="")
-
         if st.session_state.session_id:
             if not st.session_state["user_df"]["사용자명"].str.contains(st.session_state.session_id).any():
                 creation_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -94,7 +92,7 @@ def session_init():
         st.session_state["store"][session_id] = {
             "messages": [],
             "history": ChatMessageHistory(),
-            "advice_df": pd.DataFrame(columns=['day', 'stock_name', 'stock_advice'])
+            "advice_df": pd.DataFrame(columns=['day', 'stock_name', 'stock_advice']),
         }
 
 def print_messages():
@@ -118,8 +116,30 @@ class StreamHandler(BaseCallbackHandler):
 
 
 def remove_special_characters(response):
-    # 정규 표현식을 사용하여 특수 문자를 제거
-    response = re.sub(r'[^\w\s가-힣]', '', response)
+    # # 방법 1 정규 표현식을 사용하여 특수 문자를 제거
+    # response = re.sub(r'[^\w\s가-힣]', '', response)
+    # return response
+
+    # # 방법 2 문장을 분리하여 처리
+    # sentences = response.split('.')
+    # processed_sentences = []
+    # for sentence in sentences:
+    #     # 수학 표현이 포함된 문장은 그대로 유지
+    #     if any(char in sentence for char in "=+-*/^∫√"):
+    #         processed_sentences.append(sentence)
+    #     else:
+    #         # 일반 문장은 특수문자 제거
+    #         sentence = re.sub(r'[^\w\s]', '', sentence)
+    #         processed_sentences.append(sentence)
+    # # 문장들을 다시 합침
+    # return '. '.join(processed_sentences)
+
+    # 방법 3 수학 기호를 제외한 특수문자 제거
+    response = re.sub(r'[^\w\s=+\-*/^()∫√]', ' ', response)
+    # return response
+
+     # 방법 4: 별표가 2개 이상 연속되는 경우에 *를 지우기
+    response = re.sub(r'\*{2,}', ' ', response)
     return response
 
 # 음성파일 자동실행
@@ -128,10 +148,10 @@ def autoplay_audio(file_path: str):
         data = f.read()
         b64 = base64.b64encode(data).decode()
         md = f"""
-            <audio controls autoplay="true">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-            """
+        <audio controls autoplay="true">
+        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        </audio>
+        """
         st.markdown(
             md,
             unsafe_allow_html=True,
@@ -164,21 +184,19 @@ def llm_init(user_input):
         )
         st.session_state["store"][session_id]["messages"].append(ChatMessage(role="assistant", content=response))
         if response:
-            response = remove_special_characters(response)
-            # gTTS를 사용하여 텍스트를 음성으로 변환
-            tts = gTTS(text=response, lang='ko')
-            audio_file = "output.mp3"
-            tts.save(audio_file)
-            # 생성된 음성 파일을 1.5배속으로 변환
-            sound = AudioSegment.from_mp3(audio_file)
-            faster_sound = sound.speedup(playback_speed=1.35)
-            faster_audio_file = "output.mp3"
-            faster_sound.export(faster_audio_file, format="mp3")
-            autoplay_audio("output.mp3")
-            # 생성된 음성 파일 재생
-            # with open(audio_file, "rb") as audio:
-            #     audio_bytes = audio.read()
-            #     st.audio(audio_bytes, format='audio/mp3', start_time=0)
+            with st.spinner("음성파일 생성중..."):
+                response = remove_special_characters(response)
+                # gTTS를 사용하여 텍스트를 음성으로 변환
+                tts = gTTS(text=response, lang='ko')
+                audio_file = "output.mp3"
+                tts.save(audio_file)
+                # 생성된 음성 파일을 1.5배속으로 변환
+                sound = AudioSegment.from_mp3(audio_file)
+                faster_sound = sound.speedup(playback_speed=1.35)
+                faster_audio_file = "output.mp3"
+                faster_sound.export(faster_audio_file, format="mp3")
+                # 생성된 음성 파일 재생
+                autoplay_audio("output.mp3")
 
 
 def chatbot():
