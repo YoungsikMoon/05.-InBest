@@ -3,7 +3,8 @@ import FinanceDataReader as fdr
 import datetime
 import pandas as pd
 import plotly.graph_objects as go
-
+from gtts import gTTS
+from pydub import AudioSegment
 
 # CSV 파일 읽기
 import pandas as pd
@@ -80,6 +81,20 @@ def stock_advice(code, select_day):
             
             st.session_state["store"][session_id]["advice_df"] = pd.concat([advice_df, advice_data], ignore_index=True)
             st.session_state["store"][session_id]["messages"].append(ut.ChatMessage(role="assistant", content=response))
+            if response:
+                with st.spinner("음성파일 생성중..."):
+                    response = ut.remove_special_characters(response)
+                    # gTTS를 사용하여 텍스트를 음성으로 변환
+                    tts = gTTS(text=response, lang='ko')
+                    audio_file = "output.mp3"
+                    tts.save(audio_file)
+                    # 생성된 음성 파일을 1.5배속으로 변환
+                    sound = AudioSegment.from_mp3(audio_file)
+                    faster_sound = sound.speedup(playback_speed=1.35)
+                    faster_audio_file = "output.mp3"
+                    faster_sound.export(faster_audio_file, format="mp3")
+                    # 생성된 음성 파일 재생
+                    ut.autoplay_audio("output.mp3")
 
         else:
             # 기존 조언 출력
