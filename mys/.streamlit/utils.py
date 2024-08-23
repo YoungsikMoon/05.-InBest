@@ -22,6 +22,16 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 # RAG 관련
 import ollama
 
+# 음성인식 관련
+# import gTTS
+from gtts import gTTS
+from pydub import AudioSegment
+import base64
+import os
+
+# 정규표현식
+import re
+
 # import sys
 # print("현재 Python 인터프리터 경로:", sys.executable)
 
@@ -37,15 +47,15 @@ def start_streamlit(page_title="MoonYoungSik"):
         'About': "문영식 : 010-9008-4362"
         }
     )
-    st.markdown("""<style> 
-                div[data-testid="stToolbar"] {
+    st.markdown("""
+                <style> 
+                    div[data-testid="stToolbar"] {
                     display: none;
                 }
                 </style>
                 """, unsafe_allow_html=True)
     st.title(f"💰📉📈🤑 {page_title}")
     st.session_state.session_id = ""
-
 
 def side_bar():
     with st.sidebar:
@@ -72,7 +82,6 @@ def side_bar():
 
         sidebar_sctock_search.about_stock()
         
-
 def session_init():
     if "store" not in st.session_state:
         st.session_state["store"] = {}
@@ -107,6 +116,27 @@ class StreamHandler(BaseCallbackHandler):
         self.text += token
         self.container.markdown(self.text)
 
+
+def remove_special_characters(response):
+    # 정규 표현식을 사용하여 특수 문자를 제거
+    response = re.sub(r'[^\w\s가-힣]', '', response)
+    return response
+
+# 음성파일 자동실행
+def autoplay_audio(file_path: str):
+    with open(file_path, "rb") as f:
+        data = f.read()
+        b64 = base64.b64encode(data).decode()
+        md = f"""
+            <audio controls autoplay="true">
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            </audio>
+            """
+        st.markdown(
+            md,
+            unsafe_allow_html=True,
+        )
+
 def llm_init(user_input):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with st.chat_message("assistant"):
@@ -132,8 +162,23 @@ def llm_init(user_input):
             {"now": now, "ability": "주식", "username": session_id, "question": user_input},
             config={"configurable": {"session_id": session_id}}
         )
-        
         st.session_state["store"][session_id]["messages"].append(ChatMessage(role="assistant", content=response))
+        if response:
+            response = remove_special_characters(response)
+            # gTTS를 사용하여 텍스트를 음성으로 변환
+            tts = gTTS(text=response, lang='ko')
+            audio_file = "output.mp3"
+            tts.save(audio_file)
+            # 생성된 음성 파일을 1.5배속으로 변환
+            sound = AudioSegment.from_mp3(audio_file)
+            faster_sound = sound.speedup(playback_speed=1.35)
+            faster_audio_file = "output.mp3"
+            faster_sound.export(faster_audio_file, format="mp3")
+            autoplay_audio("output.mp3")
+            # 생성된 음성 파일 재생
+            # with open(audio_file, "rb") as audio:
+            #     audio_bytes = audio.read()
+            #     st.audio(audio_bytes, format='audio/mp3', start_time=0)
 
 
 def chatbot():
