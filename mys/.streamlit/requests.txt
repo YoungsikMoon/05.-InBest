@@ -1,13 +1,45 @@
+1차
 conda create -n inbest python==3.10.13
-pip install streamlit finance-datareader plotly matplotlib scikit-learn tensorflow
-pip install langchain-community langchain-ollama chromadb
-pip install --upgrade h5py
+pip install jupyter
+pip install streamlit
 pip install finance-datareader
-pip install beautifulsoup4
-pip install lxml
+pip install matplotlib
 pip install plotly
 pip install scikit-learn
 pip install tensorflow==2.13
-pip install matplotlib
 pip install typing-extensions>=4.6.0
+pip install tensorflow==2.13
+pip install langchain-ollama
+pip install --upgrade h5py
+pip install lxml
+pip install langchain_ollama
+pip install langchain-community
+pip install sounddevice
+conda install -c conda-forge sounddevice
+pip install gtts
+pip3 install gTTS-token --upgrade
+pip3 install gTTS --upgrade
 streamlit run main.py
+
+2차
+pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu121
+pip install huggingface-hub==0.20.3
+pip install datasets==2.16.1
+
+3차 NVIDIA RIVA 한국어 파인튜닝 모델 https://huggingface.co/SungBeom/stt_kr_conformer_ctc_medium
+git clone https://github.com/SUNGBEOMCHOI/Korean-Streaming-ASR.git
+cd Korean-Streaming-ASR
+sudo apt-get update
+sudo apt-get install -y libsndfile1 ffmpeg libffi-dev portaudio19-dev
+pip install Cython
+pip install -r requirements.txt
+mkdir ./checkpoint
+https://drive.google.com/drive/folders/1Adv8kYXV1XGGoLY1XA36EI38kfk0r0WZ 에서 파일 세개 다운받아서 checkpoint 디렉터리에 업로드
+python  main.py --audio_path "./audio_example/0001.wav" --device cuda
+
+4차 그냥 NEMO STT
+pip install nemo_toolkit['all']
+import nemo.collections.asr as nemo_asr
+asr_model = nemo_asr.models.ASRModel.from_pretrained("eesungkim/stt_kr_conformer_transducer_large")
+asr_model.transcribe(['KsponSpeech_000001.wav'])
+
