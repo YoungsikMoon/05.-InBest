@@ -43,7 +43,7 @@ def start_streamlit(page_title="MoonYoungSik"):
         layout='wide',
         initial_sidebar_state="expanded",
         menu_items={
-        'About': "문영식 : [PHONE_REMOVED]"
+        'About': "문영식 · InBest"
         }
     )
     st.markdown("""
